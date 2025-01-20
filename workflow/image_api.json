@@ -1,0 +1,177 @@
+{
+  "5": {
+    "inputs": {
+      "width": 1280,
+      "height": 496,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "6": {
+    "inputs": {
+      "text": "positive",
+      "clip": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "13",
+        0
+      ],
+      "vae": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "13": {
+    "inputs": {
+      "noise": [
+        "25",
+        0
+      ],
+      "guider": [
+        "22",
+        0
+      ],
+      "sampler": [
+        "16",
+        0
+      ],
+      "sigmas": [
+        "17",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "16": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "17": {
+    "inputs": {
+      "scheduler": "simple",
+      "steps": 20,
+      "denoise": 1,
+      "model": [
+        "96",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "22": {
+    "inputs": {
+      "model": [
+        "96",
+        0
+      ],
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "25": {
+    "inputs": {
+      "noise_seed": 686749365066408
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "56": {
+    "inputs": {
+      "vae_name": "Flux_vae.sft"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "57": {
+    "inputs": {
+      "clip_name1": "t5xxl_fp16.safetensors",
+      "clip_name2": "clip_l.safetensors",
+      "type": "flux"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "58": {
+    "inputs": {
+      "unet_name": "flux1-dev-fp8.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "96": {
+    "inputs": {
+      "lora_name": "flux/flux_realism_lora.safetensors",
+      "strength_model": 0.65,
+      "model": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "98": {
+    "inputs": {
+      "path": "./image.png",
+      "overwrite": "true",
+      "image": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "JWImageSaveToPath",
+    "_meta": {
+      "title": "Image Save To Path"
+    }
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "5": {
+    "inputs": {
+      "model": "rain1011/pyramid-flow-sd3",
+      "variant": "diffusion_transformer_768p",
+      "model_dtype": "bf16",
+      "text_encoder_dtype": "bf16",
+      "vae_dtype": "bf16",
+      "fp8_fastmode": false
+    },
+    "class_type": "DownloadAndLoadPyramidFlowModel",
+    "_meta": {
+      "title": "(Down)load PyramidFlow Model"
+    }
+  },
+  "8": {
+    "inputs": {
+      "tile_sample_min_size": 256,
+      "window_size": 2,
+      "model": [
+        "9",
+        0
+      ],
+      "samples": [
+        "9",
+        1
+      ]
+    },
+    "class_type": "PyramidFlowVAEDecode",
+    "_meta": {
+      "title": "PyramidFlow VAE Decode"
+    }
+  },
+  "9": {
+    "inputs": {
+      "width": [
+        "32",
+        1
+      ],
+      "height": [
+        "32",
+        2
+      ],
+      "first_frame_steps": "20, 20, 20",
+      "video_steps": "10, 10, 10",
+      "temp": 16,
+      "guidance_scale": 7,
+      "video_guidance_scale": 4,
+      "seed": 44664248661398,
+      "keep_model_loaded": "",
+      "model": [
+        "5",
+        0
+      ],
+      "prompt_embeds": [
+        "22",
+        0
+      ],
+      "input_latent": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "PyramidFlowSampler",
+    "_meta": {
+      "title": "PyramidFlow Sampler"
+    }
+  },
+  "14": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "/home/xorbis/4.result/sample.mp4",
+      "format": "video/h265-mp4",
+      "pix_fmt": "yuv420p10le",
+      "crf": 22,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "45",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "22": {
+    "inputs": {
+      "positive_prompt": "Aerial drone view camera moves forward quickly, The beautiful aurora of the North Pole, A frozen glacier in the Arctic frozen in place, A very quiet and peaceful \n and fantastic atmosphere, cinematic lighting, hyper quality, Ultra HD, 8K, high detailed",
+      "negative_prompt": "movement of sea ice fragments, cartoon style, worst quality, low quality, bad quality, blurry, absolute black, absolute white, low res, extra limbs, extra digits, misplaced objects, mutated anatomy, monochrome, horror,(((Shape broken))),(((shape transformation))),(((shape change))) ",
+      "keep_model_loaded": false,
+      "model": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "PyramidFlowTextEncode",
+    "_meta": {
+      "title": "PyramidFlow Text Encode"
+    }
+  },
+  "29": {
+    "inputs": {
+      "model": [
+        "5",
+        0
+      ],
+      "image": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "PyramidFlowVAEEncode",
+    "_meta": {
+      "title": "PyramidFlow VAE Encode"
+    }
+  },
+  "32": {
+    "inputs": {
+      "width": 1280,
+      "height": 768,
+      "upscale_method": "lanczos",
+      "keep_proportion": false,
+      "divisible_by": 16,
+      "crop": "disabled",
+      "image": [
+        "36",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJ",
+    "_meta": {
+      "title": "Resize Image"
+    }
+  },
+  "33": {
+    "inputs": {
+      "image": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "GetImageSizeAndCount",
+    "_meta": {
+      "title": "Get Image Size & Count"
+    }
+  },
+  "34": {
+    "inputs": {
+      "image": [
+        "32",
+        0
+      ]
+    },
+    "class_type": "GetImageSizeAndCount",
+    "_meta": {
+      "title": "Get Image Size & Count"
+    }
+  },
+  "36": {
+    "inputs": {
+      "image": "10_00001.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "37": {
+    "inputs": {
+      "ckpt_name": "rife47.pth",
+      "clear_cache_after_n_frames": 10,
+      "multiplier": 2,
+      "fast_mode": true,
+      "ensemble": true,
+      "scale_factor": 1,
+      "frames": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "RIFE VFI",
+    "_meta": {
+      "title": "RIFE VFI (recommend rife47 and rife49)"
+    }
+  },
+  "40": {
+    "inputs": {
+      "width": 1280,
+      "height": 496,
+      "upscale_method": "lanczos",
+      "keep_proportion": false,
+      "divisible_by": 16,
+      "crop": "disabled",
+      "image": [
+        "33",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJ",
+    "_meta": {
+      "title": "Resize Image"
+    }
+  },
+  "42": {
+    "inputs": {
+      "model_name": "1x_Fatality_DeBlur_270000_G.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "43": {
+    "inputs": {
+      "upscale_model": [
+        "42",
+        0
+      ],
+      "image": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "44": {
+    "inputs": {
+      "model_name": "4x_foolhardy_Remacri.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "45": {
+    "inputs": {
+      "upscale_model": [
+        "44",
+        0
+      ],
+      "image": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "49": {
+    "inputs": {
+      "upscale_model": [
+        "50",
+        0
+      ],
+      "image": [
+        "43",
+        0
+      ]
+    },
+    "class_type": "ImageUpscaleWithModel",
+    "_meta": {
+      "title": "Upscale Image (using Model)"
+    }
+  },
+  "50": {
+    "inputs": {
+      "model_name": "RealESRGAN_x2plus.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "Load Upscale Model"
+    }
+  },
+  "52": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "width": 2624,
+      "height": 1008,
+      "crop": "disabled",
+      "image": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "ImageScale",
+    "_meta": {
+      "title": "Upscale Image"
+    }
+  }
+}
