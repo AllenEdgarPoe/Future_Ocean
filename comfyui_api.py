@@ -162,16 +162,16 @@ def generate_video(workflow_path, image_dir, video_save_dir):
         print(e)
         raise
 
-def generate_sample_video(workflow_path, image_dir, video_save_dir):
+def generate_sample_video(workflow_path, image_path, video_save_path):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
             prompt = json.load(f)
 
         # put image input path
-        prompt['22']['inputs']['image'] = image_dir
+        prompt['22']['inputs']['image'] = image_path
 
         # set video path
-        prompt['21']['inputs']['filename_prefix'] = video_save_dir
+        prompt['21']['inputs']['filename_prefix'] = video_save_path
 
         ws = websocket.WebSocket()
         ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))

@@ -220,7 +220,7 @@ class AIContentGenerator():
 
         video_time = 8 - transition_time
 
-        ffmpeg_command = ['ffmpeg']
+        ffmpeg_command = ['ffmpeg', '-y']
         filter_complex_command = ''
 
         for idx, video in enumerate(video_paths):

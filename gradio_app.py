@@ -10,36 +10,19 @@ args, _ = cmd_args.parser.parse_known_args()
 class DataHandler:
     def __init__(self, output_path):
         self.output_path = output_path
+        self.clip_df = pd.DataFrame()
+        self.que_df = pd.DataFrame()
+        self.update_dataframe()
+
+    def update_dataframe(self):
         self.clip_df = self.get_clip_df()
         self.que_df = self.get_que_df()
-        self.initial_clip_df = self.get_initial_clip_df()
-
     def get_textprompt(self, txtfile_path):
         if not os.path.exists(txtfile_path):
             return "None"
         else:
             with open(txtfile_path, 'r', encoding='utf-8') as f:
                 return f.read().replace('\n', '')
-
-    def get_initial_clip_df(self):
-        # '''
-        # {"que": "20240101-1300", "clip": 1, "prompt": "A site engineer monitoring different aspects of a construction project",
-        #  "thumb": r"C:\Users\chsjk\PycharmProjects\MuseumX\DailyGeneration2\data\sample.png"}
-        # '''
-        que_list = os.listdir(self.output_path)
-        result = []
-        for que in que_list[:1]:
-            imgfile_list = [file for file in os.listdir(os.path.join(self.output_path, que)) if file.endswith('.png')]
-            for imgfile in imgfile_list:
-                data_dict = {
-                    'que': que,
-                    'clip': os.path.splitext(imgfile)[0],
-                    'prompt': self.get_textprompt(
-                        os.path.join(self.output_path, que, f"{os.path.splitext(imgfile)[0]}.txt")),
-                    'thumb': os.path.join(self.output_path, que, imgfile)
-                }
-                result.append(data_dict)
-        return pd.DataFrame(result)
 
     def get_clip_df(self):
         # '''
@@ -59,7 +42,8 @@ class DataHandler:
                     'thumb': os.path.join(self.output_path, que, imgfile)
                 }
                 result.append(data_dict)
-        return pd.DataFrame(result)
+        self.clip_df = pd.DataFrame(result)
+        return self.clip_df
 
 
     def get_que_df(self):
@@ -72,7 +56,8 @@ class DataHandler:
                 'clip_nums' : len(clip_list)
             }
             result.append(data_dict)
-        return pd.DataFrame(result)
+        self.que_df = pd.DataFrame(result)
+        return self.que_df
 
 class TableGenerator:
     def __init__(self):
@@ -151,19 +136,17 @@ class GradioInterface:
     def generate_que_number(self):
         return datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    def generate_merged_video(self, inputs):
-        image_inputs = inputs[:len(inputs)//2]
-        method_inputs = inputs[len(inputs)//2:]
-        video_dirs = []
-        for img_path in image_inputs:
-            video_name = os.path.basename(img_path)+'.mp4'
-        # self.content_generator.generate_merged_video(video_dirs, method_inputs)
+    def generate_merged_video(self, *args):
+        method_inputs = list(args[:-1])
+        cur_filepaths = args[-1]
+        self.content_generator.generate_merged_video(cur_filepaths, method_inputs)
         return
 
     def select_que_df(self, evt: gr.SelectData, que_table):
         selected_row = que_table.iloc[evt.index[0]]
         que = selected_row.que
-        selected_df = self.data_handler.clip_df.loc[self.data_handler.clip_df['que']==que]
+        new_clip_df = self.data_handler.get_clip_df()
+        selected_df = new_clip_df.loc[new_clip_df['que']==que]
 
         new_que_textboxes, new_prompt_textboxes, new_thumbs = self.table_generator.generate_table(selected_df, visible=True)
         return [*new_que_textboxes, *new_prompt_textboxes, *new_thumbs]
@@ -176,6 +159,10 @@ class GradioInterface:
         next_idx = (idx + 1) % prompt_num
         return *cur_filepaths, cur_filepaths, next_idx
 
+    def update_que_table(self):
+        self.data_handler.update_dataframe()
+        return self.data_handler.que_df
+
     def build_interface(self, prompt_num=3):
         with gr.Blocks(css=self.block_css) as demo:
             with gr.Row():
@@ -183,7 +170,7 @@ class GradioInterface:
                     with gr.Accordion("Que lists", open=False):
                         que_table = gr.DataFrame(value=self.data_handler.que_df, label="Que", max_height="500", show_label=False)
                     with gr.Row():
-                        que_textboxes, prompt_textboxes, thumbs = self.table_generator.generate_table(self.data_handler.initial_clip_df)
+                        que_textboxes, prompt_textboxes, thumbs = self.table_generator.generate_table(self.data_handler.clip_df)
 
                     que_table.select(self.select_que_df, inputs=que_table, outputs=que_textboxes + prompt_textboxes + thumbs)
 
@@ -220,30 +207,33 @@ class GradioInterface:
                                 cur_filepaths = gr.State([None for _ in range(prompt_num)])
                                 img_idx = gr.State(0)
                                 img_inputs = []
-                                inputs = []
+                                method_inputs = []
                                 for i in range(prompt_num):
                                     with gr.Row():
                                         with gr.Column():
                                             img_input = gr.Image(label=f'Thumbnail {i+1}')
                                             img_inputs.append(img_input)
-                                            inputs.append(img_input)
                                     if i<prompt_num-1:
                                         with gr.Row(variant="panel"):
                                             method_input = gr.Dropdown(show_label=False, choices=["crossfade", "cut"], value="crossfade", interactive=True)
-                                            inputs.append(method_input)
+                                            method_inputs.append(method_input)
 
                                 for image_widget in thumbs:
                                     image_widget.select(fn=self.select_merge_vid,
                                                         inputs=[cur_filepaths, img_idx],
                                                         outputs=img_inputs+[cur_filepaths, img_idx])
 
-
                                 video_button = gr.Button("Generate Merged Video")
                                 video_button.click(
                                     fn = self.generate_merged_video,
-                                    inputs= inputs,
+                                    inputs= method_inputs+[cur_filepaths],
                                     outputs=None
                                 )
+            demo.load(
+                fn=self.update_que_table,
+                inputs=None,
+                outputs=[que_table]
+            )
         return demo
 
     def launch(self):
