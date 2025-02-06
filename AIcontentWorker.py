@@ -3,49 +3,19 @@ import time
 import cv2
 import shutil
 import subprocess
-import logging
+from logger_setup import set_logger, LogType
 
 import cmd_args
-from comfyui_api import generate_image, generate_video, thread_execute, TimeoutException, generate_sample_image, generate_sample_video
-# from slack_api_send import upload_client, error_client, upload_file, send_error_message
-
-def setup_logger(filename, level=logging.INFO):
-    logger = logging.getLogger()
-    logger.setLevel(level)
-
-    if not logger.hasHandlers():
-        # 파일 핸들러 설정
-        file_handler = logging.FileHandler(filename, mode='a')
-        file_handler.setLevel(level)
-
-        # 콘솔 핸들러 설정
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(level)
-
-        # 포맷 설정
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
-
-        # 핸들러 추가
-        logger.addHandler(file_handler)
-        logger.addHandler(console_handler)
+from comfyui_api import thread_execute, generate_sample_image, generate_sample_video
 
 
-class AIContentGenerator():
+class AIContentWorker():
     def __init__(self):
-        self.args, _ = cmd_args.parser.parse_known_args()
-        self.args, _ = cmd_args.parser.parse_known_args()
-
-    def setup(self, queue_number):
-        self.log_output_path = self.args.log_output_path
-        self.output_path = os.path.join(self.args.output_path, queue_number)
-
-        os.makedirs(self.output_path, exist_ok=True)
-        os.makedirs(self.log_output_path,exist_ok=True)
-
-        setup_logger(os.path.join(self.log_output_path, queue_number+'.txt'))
-
+        try:
+            self.args, _ = cmd_args.parser.parse_known_args()
+            set_logger(LogType.LT_INFO, 'Init AIContentWorker')
+        except Exception as e:
+            set_logger(LogType.LT_EXCEPTION, str(e))
 
     def replace_with_sample(self, sample_path, save_path):
         shutil.copyfile(sample_path, save_path)
@@ -75,23 +45,21 @@ class AIContentGenerator():
                 with open(os.path.join(self.output_path, text_filename), 'w', encoding='utf-8') as f:
                     f.write(textprompt)
 
-                logging.info(f"--Step 2 - {str(idx)}: Successfully generated image for prompt : '{textprompt}'")
+                set_logger(LogType.LT_INFO, f"--Step 2 - {str(idx)}: Successfully generated image for prompt : '{textprompt}'")
                 break
             except Exception as e:
                 attempt+=1
-                # print(f'Step 2 - {str(idx)}: Error Occurred : {str(e)}')
-                logging.error(f'Step 2 - {str(idx)}: Error Occurred : {str(e)}')
-                # send_error_message(error_client, 'symphony-message', f'Error Occurred during Step 2 - {success}: {str(e)}')
+                set_logger(LogType.LT_EXCEPTION, f'Step 2 - {str(idx)}: Error Occurred : {str(e)}')
                 time.sleep(1)
 
         # If all retires fail, use the sample image
         if attempt >= max_retries:
-            logging.error(f'Step 2 - {str(idx)}: Failed to generate image after {max_retries} attempts.')
+            set_logger(LogType.LT_EXCEPTION, f'Step 2 - {str(idx)}: Failed to generate image after {max_retries} attempts.')
             try:
                 self.replace_with_sample(self.args.sample_image_path, save_file_path)
-                logging.info(f'Sample image copied to {save_file_path} as a fallback')
+                set_logger(LogType.LT_INFO, f'Sample image copied to {save_file_path} as a fallback')
             except Exception as e:
-                logging.error(f'Failed to copy sample image to {save_file_path}: {str(e)}')
+                set_logger(LogType.LT_EXCEPTION, f'Failed to copy sample image to {save_file_path}: {str(e)}')
                 return None
 
         return save_file_path
@@ -114,93 +82,93 @@ class AIContentGenerator():
         while attempt < max_retries:
             try:
                 thread_execute(generate_sample_video, *args, timeout=timeout)
-                logging.info(f'--Step 3 - {str(idx)}: Successfully generated video')
+                set_logger(LogType.LT_INFO, f'--Step 3 - {str(idx)}: Successfully generated video')
                 break
             except Exception as e:
                 attempt+=1
-                logging.info(f'--Step 3 - {str(idx)}: Error Occurred : {str(e)}')
+                set_logger(LogType.LT_EXCEPTION, f'--Step 3 - {str(idx)}: Error Occurred : {str(e)}')
                 time.sleep(1)
 
         if attempt >= max_retries:
-            logging.error(f'Step 3 - {str(idx)}: Failed to generate video after {max_retries} attempts.')
+            set_logger(LogType.LT_EXCEPTION, f'Step 3 - {str(idx)}: Failed to generate video after {max_retries} attempts.')
             self.replace_with_sample(self.args.sample_video_path, vid_file_path)
 
         return vid_file_path
 
 
-    def dissolve_videos(self, video_dir, overlapped_time=1):
-        video_paths = [os.path.join(video_dir, vid) for vid in os.listdir(video_dir) if vid.endswith('.mp4')]
-
-        if len(video_paths) < 2:
-            logging.error("At least two video files are required.")
-            return
-
-        output_path = os.path.join(video_dir, os.path.join(video_dir, 'combined.mp4'))
-        cap1 = cv2.VideoCapture(video_paths[0])
-        if not cap1.isOpened():
-            logging.error('First video open failed')
-            return
-
-        fps = cap1.get(cv2.CAP_PROP_FPS)
-        w = int(cap1.get(cv2.CAP_PROP_FRAME_WIDTH))
-        h = int(cap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        effect_frame = int(fps * overlapped_time)  # 3 seconds of overlap
-
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
-
-        for i, video_path in enumerate(video_paths[1:]):
-            cap2 = cv2.VideoCapture(video_path)
-            if not cap2.isOpened():
-                logging.error(f'Failed to open video: {video_path}')
-                continue
-
-            frame_cnt1 = int(cap1.get(cv2.CAP_PROP_FRAME_COUNT))
-
-            # Write all frames from the first video except the last 3 seconds
-            if i == 0:
-                for j in range(frame_cnt1 - effect_frame):
-                    ret1, frame1 = cap1.read()
-                    if not ret1:
-                        logging.error('Frame read error from cap1!')
-                        break
-                    out.write(frame1)
-            else:
-                for j in range(frame_cnt1 - effect_frame * 2):
-                    ret1, frame1 = cap1.read()
-                    if not ret1:
-                        logging.error('Frame read error from cap1!')
-                        break
-                    out.write(frame1)
-
-            # Proceed with transition between current cap1 and cap2
-            for j in range(effect_frame):
-                ret1, frame1 = cap1.read()
-                ret2, frame2 = cap2.read()
-
-                if not ret1 or not ret2:
-                    logging.error('Frame read error during transition!')
-                    break
-
-                alpha = j / effect_frame
-                frame = cv2.addWeighted(frame1, 1 - alpha, frame2, alpha, 0)
-                out.write(frame)
-
-            cap1.release()  # Release the old video capture
-            cap1 = cap2  # Update cap1 to the current cap2, continue the loop
-
-        # After processing videos, capture remaining frames of the last video
-        while True:
-            ret1, frame1 = cap1.read()
-            if not ret1:
-                break
-            out.write(frame1)
-
-        # Cleanup resources
-        cap1.release()
-        out.release()
-        logging.info("Video Combined Finished")
-        return
+    # def dissolve_videos(self, video_dir, overlapped_time=1):
+    #     video_paths = [os.path.join(video_dir, vid) for vid in os.listdir(video_dir) if vid.endswith('.mp4')]
+    #
+    #     if len(video_paths) < 2:
+    #         set_logger(LogType.LT_EXCEPTION, 'At least two video files are required.')
+    #         return
+    #
+    #     output_path = os.path.join(video_dir, os.path.join(video_dir, 'combined.mp4'))
+    #     cap1 = cv2.VideoCapture(video_paths[0])
+    #     if not cap1.isOpened():
+    #         set_logger(LogType.LT_EXCEPTION, 'First video open failed')
+    #         return
+    #
+    #     fps = cap1.get(cv2.CAP_PROP_FPS)
+    #     w = int(cap1.get(cv2.CAP_PROP_FRAME_WIDTH))
+    #     h = int(cap1.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    #     effect_frame = int(fps * overlapped_time)  # 3 seconds of overlap
+    #
+    #     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    #     out = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
+    #
+    #     for i, video_path in enumerate(video_paths[1:]):
+    #         cap2 = cv2.VideoCapture(video_path)
+    #         if not cap2.isOpened():
+    #             set_logger(LogType.LT_EXCEPTION, f'Failed to open video: {video_path}')
+    #             continue
+    #
+    #         frame_cnt1 = int(cap1.get(cv2.CAP_PROP_FRAME_COUNT))
+    #
+    #         # Write all frames from the first video except the last 3 seconds
+    #         if i == 0:
+    #             for j in range(frame_cnt1 - effect_frame):
+    #                 ret1, frame1 = cap1.read()
+    #                 if not ret1:
+    #                     set_logger(LogType.LT_EXCEPTION, 'Frame read error from cap1!')
+    #                     break
+    #                 out.write(frame1)
+    #         else:
+    #             for j in range(frame_cnt1 - effect_frame * 2):
+    #                 ret1, frame1 = cap1.read()
+    #                 if not ret1:
+    #                     set_logger(LogType.LT_EXCEPTION, 'Frame read error from cap1!')
+    #                     break
+    #                 out.write(frame1)
+    #
+    #         # Proceed with transition between current cap1 and cap2
+    #         for j in range(effect_frame):
+    #             ret1, frame1 = cap1.read()
+    #             ret2, frame2 = cap2.read()
+    #
+    #             if not ret1 or not ret2:
+    #                 set_logger(LogType.LT_EXCEPTION, 'Frame read error during transition!')
+    #                 break
+    #
+    #             alpha = j / effect_frame
+    #             frame = cv2.addWeighted(frame1, 1 - alpha, frame2, alpha, 0)
+    #             out.write(frame)
+    #
+    #         cap1.release()  # Release the old video capture
+    #         cap1 = cap2  # Update cap1 to the current cap2, continue the loop
+    #
+    #     # After processing videos, capture remaining frames of the last video
+    #     while True:
+    #         ret1, frame1 = cap1.read()
+    #         if not ret1:
+    #             break
+    #         out.write(frame1)
+    #
+    #     # Cleanup resources
+    #     cap1.release()
+    #     out.release()
+    #     set_logger(LogType.LT_INFO, 'Video Combined Finished')
+    #     return
 
     def get_vidpath_from_imgpath(self, img_path):
         base, ext = os.path.splitext(img_path)
@@ -211,11 +179,11 @@ class AIContentGenerator():
             return None
 
 
-    def generate_merged_video(self, img_paths, merge_methods, transition_time=2):
+    def generate_merged_video(self, img_paths, merge_methods, transition_time=3):
         output_path = os.path.join(self.args.final_vid_output_path, 'combined.mp4')
         video_paths = [self.get_vidpath_from_imgpath(img_path) for img_path in img_paths]
         if len(video_paths)<2:
-            logging.error('At least 2 videos are needed')
+            set_logger(LogType.LT_EXCEPTION, 'At least 2 videos are needed')
             raise Exception('At least 2 videos are needed')
 
         video_time = 8 - transition_time
@@ -256,10 +224,10 @@ class AIContentGenerator():
 
         try:
             subprocess.run(ffmpeg_command, check=True)
-            logging.info("Video Combined Finished")
+            set_logger(LogType.LT_INFO, 'Video Combined Finished')
 
         except subprocess.CalledProcessError as e:
-            logging.error(f"Video Combined Failed : {e}")
+            set_logger(LogType.LT_EXCEPTION, f"Video Combined Failed : {e}")
         return
 
 
@@ -289,16 +257,14 @@ class AIContentGenerator():
 
         try:
             subprocess.run(ffmpeg_command, check=True)
-            logging.info("Video Combined Finished")
+            set_logger(LogType.LT_INFO, 'Video Combined Finished')
 
         except subprocess.CalledProcessError as e:
-            logging.error(f"Video Combined Failed : {e}")
+            set_logger(LogType.LT_EXCEPTION, f"Video Combined Failed : {e}")
         return
 
-    def run(self, queue_number, text_prompt, idx):
-        self.setup(queue_number)
-        # logging.info("========Start Process=========")
-        # Make 30 images
+    def run_img_video(self, queue_number, text_prompt, idx):
+        self.output_path = os.path.join(self.args.output_path, queue_number)
         image_paths = self.make_image(text_prompt, idx)
         # Make 10 videos
         video_paths = self.make_video(idx)
@@ -308,7 +274,7 @@ class AIContentGenerator():
 
 
 if __name__ == "__main__":
-    dailygeneration = AIContentGenerator()
-    path = r'C:\Users\chsjk\PycharmProjects\Future_Ocean\result\sample'
+    dailygeneration = AIContentWorker()
+    path = r'C:\Users\chsjk\PycharmProjects\Future_Ocean\result\20250203-084729'
     img_paths = [os.path.join(path,img) for img in os.listdir(path) if img.endswith('.png')]
     dailygeneration.generate_merged_video(img_paths, ['cut', 'cut'])

@@ -24,7 +24,6 @@ class TimeoutException(Exception):
 
 def thread_execute(func, *args, timeout=20):
     que = queue.Queue()
-
     def wrapper_func():
         try:
             result = func(*args)

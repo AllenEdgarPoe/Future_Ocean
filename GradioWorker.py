@@ -182,8 +182,6 @@ class GradioInterfaceWorker:
             )
         return demo
 
-    def launch(self):
-        self.demo.launch()
 
 # if __name__ == "__main__":
 #     init_logger()
