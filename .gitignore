@@ -1,7 +1,7 @@
 log
 result
+result2
 venv
 .idea
 __pycache__
-workflow
-comfyui_api.py
+tt.py

@@ -9,12 +9,12 @@ import json
 import urllib.request
 import urllib.parse
 import sys
-
+import socket
 import cmd_args
 import queue
 import threading
 sys.path.append('.')
-args, _ = cmd_args.parser.parse_known_args()
+args = cmd_args.parse_args()
 server_address = args.server_address
 client_id = str(uuid.uuid4())
 
@@ -93,28 +93,33 @@ def randomize_seed(prompt, node_id):
     return prompt
 
 
-def generate_image(workflow_path, image_output_path, article):
+def generate_image(workflow_path, image_output_path, text_prompt):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
             prompt = json.load(f)
 
         # preprocess article
-        article = re.sub(r'^\d+\s*\.', '', article)
-        article = article.rstrip()
+        text_prompt = re.sub(r'^\d+\s*\.', '', text_prompt)
+        text_prompt = text_prompt.rstrip()
 
         # put input path
-        prompt['6']['inputs']['text'] = article
+        prompt['6']['inputs']['text'] = text_prompt
 
         # save file
         prompt['98']['inputs']['path'] = image_output_path
         ws = websocket.WebSocket()
         ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id), ping_interval=None)
+
+        # ws_url = f'ws://{server_address}/ws?clientId={client_id}'
+        # ws = websocket.create_connection(ws_url, timeout=timeout)
         history = get_images(ws, prompt)
         return
 
+    except (websocket.WebSocketTimeoutException, socket.timeout) as e:
+        raise TimeoutException()
+
     except Exception as e:
-        print(str(e))
-        raise
+        raise e
 def generate_sample_image(workflow_path, image_output_path, text_prompt):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
@@ -132,14 +137,18 @@ def generate_sample_image(workflow_path, image_output_path, text_prompt):
         prompt['14']['inputs']['path'] = image_output_path
         ws = websocket.WebSocket()
         ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id), ping_interval=None)
+        # ws_url = f'ws://{server_address}/ws?clientId={client_id}'
+        # ws = websocket.create_connection(ws_url, timeout=timeout)
         history = get_images(ws, prompt)
         # file_name = history['outputs']['13']['images'][0]['filename']
 
         return image_output_path
 
+    except (websocket.WebSocketTimeoutException, socket.timeout) as e:
+        raise TimeoutException()
+
     except Exception as e:
-        print(str(e))
-        raise
+        raise e
 
 def generate_video(workflow_path, image_dir, video_save_dir):
     try:
@@ -152,16 +161,21 @@ def generate_video(workflow_path, image_dir, video_save_dir):
         # set video path
         prompt['14']['inputs']['filename_prefix'] = video_save_dir
 
+        # ws_url = f'ws://{server_address}/ws?clientId={client_id}'
+        # ws = websocket.create_connection(ws_url, timeout=timeout)
         ws = websocket.WebSocket()
         ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
         history = get_images(ws, prompt)
         return
 
-    except Exception as e:
-        print(e)
-        raise
 
-def generate_sample_video(workflow_path, image_path, video_save_path):
+    except (websocket.WebSocketTimeoutException, socket.timeout) as e:
+        raise TimeoutException()
+
+    except Exception as e:
+        raise e
+
+def generate_sample_video(workflow_path, image_path, video_save_path, timeout=10):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
             prompt = json.load(f)
@@ -172,14 +186,18 @@ def generate_sample_video(workflow_path, image_path, video_save_path):
         # set video path
         prompt['21']['inputs']['filename_prefix'] = video_save_path
 
-        ws = websocket.WebSocket()
-        ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
+        # ws = websocket.WebSocket()
+        ws_url = f'ws://{server_address}/ws?clientId={client_id}'
+        ws = websocket.create_connection(ws_url, timeout=timeout)
+        # ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
         history = get_images(ws, prompt)
         return
 
+    except (websocket.WebSocketTimeoutException, socket.timeout) as e:
+        raise TimeoutException()
+
     except Exception as e:
-        print(e)
-        raise
+        raise e
 
 
 

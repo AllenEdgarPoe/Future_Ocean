@@ -4,9 +4,6 @@ import threading
 from queue import Queue
 from loguru import logger
 from enum import Enum
-import cmd_args
-
-args, _ = cmd_args.parser.parse_known_args()
 
 cs_lock = threading.Lock()
 log_queue = Queue()
@@ -16,6 +13,7 @@ class LogType(Enum):
     LT_INFO      = 1
     LT_EXCEPTION = 2
     LT_ERROR     = 3
+    LT_WARNING = 4
 
 
 def set_log_queue(data: str):
@@ -57,6 +55,9 @@ def set_logger(type: LogType | None, data: str):
             if type == LogType.LT_ERROR:
                 set_log_queue('<color=red>'+ now.strftime('%Y-%m-%d %H:%M:%S ')+ data +'</red><br>')
                 logger.error(data)
+            if type == LogType.LT_WARNING:
+                set_log_queue('<color=blue>'+ now.strftime('%Y-%m-%d %H:%M:%S ')+ data +'</blue><br>')
+                logger.warning(data)
     except Exception as e:
         print(e)
         pass

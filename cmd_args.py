@@ -2,18 +2,32 @@ import argparse
 import json
 import os
 
-parser = argparse.ArgumentParser()
+def parse_args():
+    base_dir = os.path.dirname(os.path.realpath(__file__))
+    parser = argparse.ArgumentParser()
 
-parser.add_argument('--output_path', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\result')
-parser.add_argument('--final_vid_output_path', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\result\final')
+    # comfy server address
+    parser.add_argument('--server_address', default='127.0.0.1:8188')
 
-parser.add_argument('--server_address', default='127.0.0.1:8189')
+    # save directory
+    parser.add_argument('--output_path', default=os.path.join(base_dir, 'result'))
+    parser.add_argument('--final_vid_output_path', default=os.path.join(base_dir, 'result', 'final'))
+    parser.add_argument('--data_path', default=os.path.join(base_dir, 'data'))
 
-parser.add_argument('--image_workflow', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\workflow\sample_image_api.json')
-parser.add_argument('--video_workflow', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\workflow\sample_video_api.json')
+    # comfyui directory
+    parser.add_argument('--ComfyUI_path', default=r'C:\Users\chsjk\PycharmProjects\ComfyUI_windows_portable')
 
-parser.add_argument('--sample_text_path', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\data\sample_prompt.txt')  #sample image when image execution is not done
-parser.add_argument('--sample_image_path', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\data\sample_image.png')  #sample image when image execution is not done
-parser.add_argument('--sample_video_path', default=r'C:\Users\chsjk\PycharmProjects\Future_Ocean\data\sample_video.mp4')  #sample image when image execution is not done
+    # workflow path
+    parser.add_argument('--image_workflow', default=os.path.join(base_dir, 'workflow', 'sample_image_api.json'))
+    parser.add_argument('--video_workflow', default=os.path.join(base_dir, 'workflow', 'sample_video_api.json'))
 
-parser.add_argument('--prompt_num', default=3)
+    # samples
+    parser.add_argument('--sample_text_path', default=os.path.join(base_dir, 'data', 'sample_prompt.txt'))
+    parser.add_argument('--sample_image_path', default=os.path.join(base_dir, 'data', 'sample_image.png'))
+    parser.add_argument('--sample_video_path', default=os.path.join(base_dir, 'data', 'sample_video.mp4'))
+
+    # number of prompts to generate
+    parser.add_argument('--prompt_num', default=3)
+
+    args,_ = parser.parse_known_args()
+    return args
