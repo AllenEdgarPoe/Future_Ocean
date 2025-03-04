@@ -7,11 +7,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # comfy server address
-    parser.add_argument('--server_address', default='127.0.0.1:8188')
+    parser.add_argument('--server_address', default='127.0.0.1')
+    parser.add_argument('--port', default=8188)
 
     # save directory
     parser.add_argument('--output_path', default=os.path.join(base_dir, 'result'))
-    parser.add_argument('--final_vid_output_path', default=os.path.join(base_dir, 'result', 'final'))
+    parser.add_argument('--final_vid_output_path', default=os.path.join(base_dir, 'final_result'))
     parser.add_argument('--data_path', default=os.path.join(base_dir, 'data'))
 
     # comfyui directory

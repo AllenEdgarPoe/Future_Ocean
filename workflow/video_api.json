@@ -284,8 +284,8 @@
   "52": {
     "inputs": {
       "upscale_method": "lanczos",
-      "width": 2624,
-      "height": 1008,
+      "width": 2440,
+      "height": 1032,
       "crop": "disabled",
       "image": [
         "49",

@@ -1,6 +1,8 @@
 import os
+import queue
+import threading
 from logger_setup import LogType, set_logger
-
+import random
 def preparation(args):
     try:
         # make directories for program
@@ -28,3 +30,32 @@ def preparation(args):
 
     except Exception as e:
         set_logger(LogType.LT_EXCEPTION, str(e))
+
+
+class TimeoutException(Exception):
+    pass
+
+def thread_execute(func, *args, timeout=20):
+    que = queue.Queue()
+    def wrapper_func():
+        try:
+            result = func(*args)
+        except Exception as e:
+            result = e
+        que.put(result)
+
+    thread = threading.Thread(target=wrapper_func)
+    thread.daemon = True
+    thread.start()
+
+    try:
+        result = que.get(block=True, timeout=timeout)
+    except queue.Empty:
+        raise TimeoutException(f"Function execution exceeded {timeout} seconds")
+    if isinstance(result, Exception):
+        raise result
+    return result
+
+def randomize_seed(prompt, node_id):
+    prompt[node_id]['inputs']['seed'] = random.randint(1,4294967294)
+    return prompt

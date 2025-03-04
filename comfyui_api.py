@@ -11,37 +11,15 @@ import urllib.parse
 import sys
 import socket
 import cmd_args
-import queue
 import threading
 sys.path.append('.')
 args = cmd_args.parse_args()
 server_address = args.server_address
 client_id = str(uuid.uuid4())
 
-
 class TimeoutException(Exception):
     pass
 
-def thread_execute(func, *args, timeout=20):
-    que = queue.Queue()
-    def wrapper_func():
-        try:
-            result = func(*args)
-        except Exception as e:
-            result = e
-        que.put(result)
-
-    thread = threading.Thread(target=wrapper_func)
-    thread.daemon = True
-    thread.start()
-
-    try:
-        result = que.get(block=True, timeout=timeout)
-    except queue.Empty:
-        raise TimeoutException(f"Function execution exceeded {timeout} seconds")
-    if isinstance(result, Exception):
-        raise result
-    return result
 def readImage(path):
     img = cv2.imread(path)
     retval, buffer = cv2.imencode('.png', img)
@@ -150,16 +128,17 @@ def generate_sample_image(workflow_path, image_output_path, text_prompt):
     except Exception as e:
         raise e
 
-def generate_video(workflow_path, image_dir, video_save_dir):
+def generate_video(workflow_path, text_prompt, image_path, video_save_path):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
             prompt = json.load(f)
 
+        prompt['22']['inputs']['positive_prompt'] = text_prompt
         # put image input path
-        prompt['36']['inputs']['image'] = image_dir
+        prompt['36']['inputs']['image'] = image_path
 
         # set video path
-        prompt['14']['inputs']['filename_prefix'] = video_save_dir
+        prompt['14']['inputs']['filename_prefix'] = video_save_path
 
         # ws_url = f'ws://{server_address}/ws?clientId={client_id}'
         # ws = websocket.create_connection(ws_url, timeout=timeout)
@@ -175,11 +154,12 @@ def generate_video(workflow_path, image_dir, video_save_dir):
     except Exception as e:
         raise e
 
-def generate_sample_video(workflow_path, image_path, video_save_path, timeout=10):
+def generate_sample_video(workflow_path, text_prompt, image_path, video_save_path):
     try:
         with open(workflow_path, 'r', encoding='utf-8') as f:
             prompt = json.load(f)
 
+        prompt['7']['inputs']['text'] = text_prompt
         # put image input path
         prompt['22']['inputs']['image'] = image_path
 
@@ -188,8 +168,8 @@ def generate_sample_video(workflow_path, image_path, video_save_path, timeout=10
 
         # ws = websocket.WebSocket()
         ws_url = f'ws://{server_address}/ws?clientId={client_id}'
-        ws = websocket.create_connection(ws_url, timeout=timeout)
-        # ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
+        ws = websocket.WebSocket()
+        ws.connect("ws://{}/ws?clientId={}".format(server_address, client_id))
         history = get_images(ws, prompt)
         return
 
